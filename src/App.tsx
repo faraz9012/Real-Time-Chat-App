@@ -1,34 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useMemo, useState } from 'react'
 import './App.css'
+import Chat from './components/Chat'
+import Login from './components/Login'
+
+type AppUser = {
+  id: string
+  name: string
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null)
+
+  const greeting = useMemo(() => {
+    if (!currentUser) return 'Welcome to EchoLine'
+    return `Welcome back, ${currentUser.name}`
+  }, [currentUser])
+
+  const handleLogin = (user: AppUser) => {
+    setCurrentUser(user)
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="app">
+      <header className="app__header">
+        <div>
+          <p className="app__kicker">Real-Time Chat Lab</p>
+          <h1 className="app__title">{greeting}</h1>
+        </div>
+        <div className="app__chip">WebSocket-inspired demo</div>
+      </header>
+      <main className="app__main">
+        {currentUser ? (
+          <Chat currentUser={currentUser} onLogout={handleLogout} />
+        ) : (
+          <Login onLogin={handleLogin} />
+        )}
+      </main>
+      <footer className="app__footer">
+        Built for DCN-II: fast, simple, and testable in multiple tabs.
+      </footer>
+    </div>
   )
 }
 
