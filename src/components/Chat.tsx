@@ -26,15 +26,15 @@ type ChatProps = {
   onLogout: () => void
 }
 
-type ChannelEvent =
+type ServerEvent =
   | { type: 'join'; user: AppUser }
   | { type: 'leave'; user: AppUser }
   | { type: 'ping'; user: AppUser }
   | { type: 'chat'; message: ChatMessage }
 
-const CHANNEL_NAME = 'rt-chat-channel'
 const OFFLINE_AFTER_MS = 12000
 const PING_EVERY_MS = 5000
+const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:4001'
 
 const formatTime = (timestamp: number) =>
   new Intl.DateTimeFormat('en-US', {
@@ -42,20 +42,17 @@ const formatTime = (timestamp: number) =>
     minute: '2-digit',
   }).format(new Date(timestamp))
 
-const createId = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
-  }
-  return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 const Chat = ({ currentUser, onLogout }: ChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [users, setUsers] = useState<Record<string, PresenceUser>>({})
   const [text, setText] = useState('')
   const [notice, setNotice] = useState('')
-  const [connection, setConnection] = useState<'connected' | 'local'>('connected')
-  const channelRef = useRef<BroadcastChannel | null>(null)
+  const [connection, setConnection] = useState<'connecting' | 'connected' | 'offline'>(
+    'connecting',
+  )
+  const wsRef = useRef<WebSocket | null>(null)
+  const pingRef = useRef<number | null>(null)
+  const cleanupRef = useRef<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   const pushMessage = (message: ChatMessage) => {
@@ -74,62 +71,83 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
     }))
   }
 
-  const sendEvent = (payload: ChannelEvent) => {
-    if (channelRef.current) {
-      channelRef.current.postMessage(payload)
-      return
+  useEffect(() => {
+    let isMounted = true
+    const loadMessages = async () => {
+      try {
+        const response = await fetch('/api/messages?limit=80')
+        if (!response.ok) throw new Error('Failed to load messages')
+        const data = (await response.json()) as ChatMessage[]
+        if (isMounted) setMessages(data)
+      } catch (error) {
+        if (isMounted) {
+          setNotice('Unable to load message history. Connect the server.')
+        }
+      }
     }
-    if (payload.type === 'chat') {
-      pushMessage(payload.message)
+    loadMessages()
+    return () => {
+      isMounted = false
     }
-  }
+  }, [])
 
   useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') {
-      setConnection('local')
-      upsertUser(currentUser, 'online')
-      return
+    const socket = new WebSocket(WS_URL)
+    wsRef.current = socket
+
+    const handleClose = () => {
+      setConnection('offline')
+      if (pingRef.current) window.clearInterval(pingRef.current)
+      if (cleanupRef.current) window.clearInterval(cleanupRef.current)
     }
 
-    const channel = new BroadcastChannel(CHANNEL_NAME)
-    channelRef.current = channel
+    socket.addEventListener('open', () => {
+      setConnection('connected')
+      socket.send(JSON.stringify({ type: 'join', user: currentUser }))
+      pingRef.current = window.setInterval(() => {
+        socket.send(JSON.stringify({ type: 'ping', user: currentUser }))
+      }, PING_EVERY_MS)
+    })
 
-    channel.onmessage = (event: MessageEvent<ChannelEvent>) => {
-      const data = event.data
-      if (!data || typeof data !== 'object' || !('type' in data)) return
-      if (data.type === 'chat') {
-        pushMessage(data.message)
-        upsertUser({ id: data.message.userId, name: data.message.userName }, 'online')
+    socket.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data as string) as ServerEvent
+        if (!data || typeof data !== 'object' || !('type' in data)) return
+        if (data.type === 'chat') {
+          pushMessage(data.message)
+          upsertUser(
+            { id: data.message.userId, name: data.message.userName },
+            'online',
+          )
+          return
+        }
+        if (data.type === 'join' || data.type === 'ping') {
+          upsertUser(data.user, 'online')
+          return
+        }
+        if (data.type === 'leave') {
+          setUsers((prev) => {
+            const existing = prev[data.user.id]
+            if (!existing) return prev
+            return {
+              ...prev,
+              [data.user.id]: {
+                ...existing,
+                status: 'offline',
+                lastSeen: Date.now(),
+              },
+            }
+          })
+        }
+      } catch (error) {
         return
       }
-      if (data.type === 'join' || data.type === 'ping') {
-        upsertUser(data.user, 'online')
-        return
-      }
-      if (data.type === 'leave') {
-        setUsers((prev) => {
-          const existing = prev[data.user.id]
-          if (!existing) return prev
-          return {
-            ...prev,
-            [data.user.id]: {
-              ...existing,
-              status: 'offline',
-              lastSeen: Date.now(),
-            },
-          }
-        })
-      }
-    }
+    })
 
-    const announce = () => sendEvent({ type: 'join', user: currentUser })
-    announce()
+    socket.addEventListener('close', handleClose)
+    socket.addEventListener('error', handleClose)
 
-    const ping = window.setInterval(() => {
-      sendEvent({ type: 'ping', user: currentUser })
-    }, PING_EVERY_MS)
-
-    const cleanup = window.setInterval(() => {
+    cleanupRef.current = window.setInterval(() => {
       const now = Date.now()
       setUsers((prev) => {
         let changed = false
@@ -145,18 +163,22 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
     }, 4000)
 
     const handleUnload = () => {
-      sendEvent({ type: 'leave', user: currentUser })
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'leave', user: currentUser }))
+      }
     }
 
     window.addEventListener('beforeunload', handleUnload)
 
     return () => {
       window.removeEventListener('beforeunload', handleUnload)
-      window.clearInterval(ping)
-      window.clearInterval(cleanup)
-      sendEvent({ type: 'leave', user: currentUser })
-      channel.close()
-      channelRef.current = null
+      if (pingRef.current) window.clearInterval(pingRef.current)
+      if (cleanupRef.current) window.clearInterval(cleanupRef.current)
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'leave', user: currentUser }))
+      }
+      socket.close()
+      wsRef.current = null
     }
   }, [currentUser])
 
@@ -170,7 +192,7 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
       list.push({
         id: currentUser.id,
         name: currentUser.name,
-        status: 'online',
+        status: connection === 'connected' ? 'online' : 'offline',
         lastSeen: Date.now(),
       })
     }
@@ -178,7 +200,7 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
       if (a.status !== b.status) return a.status === 'online' ? -1 : 1
       return a.name.localeCompare(b.name)
     })
-  }, [users, currentUser])
+  }, [users, currentUser, connection])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -188,15 +210,14 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
       setNotice('Message too long. Keep it under 500 characters.')
       return
     }
-    setNotice('')
-    const message: ChatMessage = {
-      id: createId(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      text: trimmed,
-      timestamp: Date.now(),
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setNotice('Server offline. Start the backend to send messages.')
+      return
     }
-    sendEvent({ type: 'chat', message })
+    setNotice('')
+    wsRef.current.send(
+      JSON.stringify({ type: 'chat', user: currentUser, text: trimmed }),
+    )
     setText('')
   }
 
@@ -208,9 +229,7 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
           <div>
             <p className="chat__name">{currentUser.name}</p>
             <p className="chat__subtle">
-              {connection === 'connected'
-                ? 'BroadcastChannel online'
-                : 'Local-only mode'}
+              {connection === 'connected' ? 'Server connected' : 'Server offline'}
             </p>
           </div>
         </div>
@@ -249,7 +268,7 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
         <div className="chat__messages" role="log" aria-live="polite">
           {messages.length === 0 ? (
             <div className="chat__empty">
-              Start the conversation. Open another tab to see real-time updates.
+              Start the conversation. Messages will persist on the server.
             </div>
           ) : (
             messages.map((message) => (

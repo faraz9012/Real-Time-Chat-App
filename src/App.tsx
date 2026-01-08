@@ -8,8 +8,6 @@ type AppUser = {
   name: string
 }
 
-const STORAGE_KEY = 'rtchat_user'
-
 const createId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
@@ -18,15 +16,7 @@ const createId = () => {
 }
 
 function App() {
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    try {
-      return JSON.parse(raw) as AppUser
-    } catch {
-      return null
-    }
-  })
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null)
 
   const greeting = useMemo(() => {
     if (!currentUser) return 'Welcome to EchoLine'
@@ -35,12 +25,10 @@ function App() {
 
   const handleLogin = (name: string) => {
     const user = { id: createId(), name }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
     setCurrentUser(user)
   }
 
   const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEY)
     setCurrentUser(null)
   }
 
