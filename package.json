@@ -7,12 +7,15 @@
     "dev": "vite",
     "dev:client": "vite",
     "dev:server": "node server/index.cjs",
+    "db:init": "node server/init-db.cjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "dotenv": "^17.2.1",
     "express": "^4.21.2",
+    "mysql2": "^3.14.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "ws": "^8.18.3"

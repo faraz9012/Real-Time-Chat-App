@@ -52,6 +52,8 @@
   border: 1px solid var(--border);
   padding: 12px 14px;
   font-size: 1rem;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .login__card button {
@@ -62,6 +64,48 @@
   font-weight: 700;
   padding: 12px 18px;
   font-size: 1rem;
+  box-shadow: 0 12px 24px rgba(58, 110, 232, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.login__card button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(58, 110, 232, 0.34);
+}
+
+.login__card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.login__toggle {
+  background: transparent;
+  color: var(--ink-muted);
+  border: none;
+  padding: 0;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.login__toggle:hover {
+  color: var(--ink);
+}
+
+.login__toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(58, 110, 232, 0.2);
+  border-radius: 6px;
+}
+
+.login__card input:focus-visible {
+  outline: none;
+  border-color: rgba(58, 110, 232, 0.6);
+  box-shadow: 0 0 0 3px rgba(58, 110, 232, 0.15);
 }
 
 .login__error {

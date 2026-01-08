@@ -34,7 +34,7 @@ type ServerEvent =
 
 const OFFLINE_AFTER_MS = 12000
 const PING_EVERY_MS = 5000
-const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:4001'
+const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:4000'
 
 const formatTime = (timestamp: number) =>
   new Intl.DateTimeFormat('en-US', {

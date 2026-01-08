@@ -8,13 +8,6 @@ type AppUser = {
   name: string
 }
 
-const createId = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
-  }
-  return `user-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 function App() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null)
 
@@ -23,8 +16,7 @@ function App() {
     return `Welcome back, ${currentUser.name}`
   }, [currentUser])
 
-  const handleLogin = (name: string) => {
-    const user = { id: createId(), name }
+  const handleLogin = (user: AppUser) => {
     setCurrentUser(user)
   }
 
