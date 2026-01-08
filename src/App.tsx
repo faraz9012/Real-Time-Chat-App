@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import './App.css'
 import Chat from './components/Chat'
 import Login from './components/Login'
 
@@ -25,24 +24,38 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app__header">
-        <div>
-          <p className="app__kicker">Real-Time Chat Lab</p>
-          <h1 className="app__title">{greeting}</h1>
-        </div>
-        <div className="app__chip">WebSocket-inspired demo</div>
-      </header>
-      <main className="app__main">
-        {currentUser ? (
-          <Chat currentUser={currentUser} onLogout={handleLogout} />
-        ) : (
-          <Login onLogin={handleLogin} />
-        )}
-      </main>
-      <footer className="app__footer">
-        Built for DCN-II: fast, simple, and testable in multiple tabs.
-      </footer>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-slate-100">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-10">
+        <header className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+              EchoLine Chat
+            </p>
+            <h1 className="font-display text-3xl text-slate-900 md:text-4xl">
+              {greeting}
+            </h1>
+          </div>
+          <div className="text-sm text-slate-500">
+            {currentUser ? (
+              <>
+                Signed in as{' '}
+                <span className="font-semibold text-slate-700">
+                  {currentUser.name}
+                </span>
+              </>
+            ) : (
+              'Secure realtime conversations, ready when you are.'
+            )}
+          </div>
+        </header>
+        <main className="flex-1">
+          {currentUser ? (
+            <Chat currentUser={currentUser} onLogout={handleLogout} />
+          ) : (
+            <Login onLogin={handleLogin} />
+          )}
+        </main>
+      </div>
     </div>
   )
 }

@@ -128,10 +128,23 @@ const getMessages = async (limit) => {
   return rows.reverse()
 }
 
+const getAllUsers = async () => {
+  const db = getPool()
+  const [rows] = await db.query(
+    `
+      SELECT id, display_name AS name
+      FROM users
+      ORDER BY display_name ASC
+    `,
+  )
+  return rows.map((row) => ({ id: String(row.id), name: row.name }))
+}
+
 module.exports = {
   initDb,
   insertMessage,
   createUser,
   authenticateUser,
   getMessages,
+  getAllUsers,
 }

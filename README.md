@@ -64,3 +64,6 @@ Users sign up with a unique username, password, and display name. Log in with th
 
 - If MySQL denies access, double-check the username/password in `MYSQL_URL`.
 - If you use XAMPP, root often has no password by default.
+## UI Stack
+
+The frontend uses Tailwind CSS and shadcn-style component primitives located under `src/components/ui`.
