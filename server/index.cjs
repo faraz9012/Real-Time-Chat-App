@@ -9,6 +9,7 @@ const {
   getMessages,
   createUser,
   authenticateUser,
+  getAllUsers,
 } = require('./db.cjs')
 
 const PORT = process.env.PORT || 4000
@@ -35,6 +36,15 @@ app.get('/api/messages', async (req, res) => {
     res.json(messages)
   } catch (error) {
     res.status(500).json({ error: 'Failed to load messages' })
+  }
+})
+
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await getAllUsers()
+    res.json(users)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load users' })
   }
 })
 

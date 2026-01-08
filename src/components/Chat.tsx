@@ -1,5 +1,9 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import './Chat.css'
+import { LogOut, Send } from 'lucide-react'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Input } from './ui/input'
 
 type AppUser = {
   id: string
@@ -73,6 +77,30 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
 
   useEffect(() => {
     let isMounted = true
+    const loadUsers = async () => {
+      try {
+        const response = await fetch('/api/users')
+        if (!response.ok) throw new Error('Failed to load users')
+        const data = (await response.json()) as AppUser[]
+        if (!isMounted) return
+        setUsers((prev) => {
+          const next: Record<string, PresenceUser> = { ...prev }
+          data.forEach((user) => {
+            if (!next[user.id]) {
+              next[user.id] = {
+                id: user.id,
+                name: user.name,
+                status: 'offline',
+                lastSeen: Date.now(),
+              }
+            }
+          })
+          return next
+        })
+      } catch (error) {
+        return
+      }
+    }
     const loadMessages = async () => {
       try {
         const response = await fetch('/api/messages?limit=80')
@@ -85,6 +113,7 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
         }
       }
     }
+    loadUsers()
     loadMessages()
     return () => {
       isMounted = false
@@ -222,91 +251,126 @@ const Chat = ({ currentUser, onLogout }: ChatProps) => {
   }
 
   return (
-    <section className="chat">
-      <aside className="chat__sidebar">
-        <div className="chat__profile">
-          <div className="chat__avatar">{currentUser.name.slice(0, 2)}</div>
-          <div>
-            <p className="chat__name">{currentUser.name}</p>
-            <p className="chat__subtle">
-              {connection === 'connected' ? 'Server connected' : 'Server offline'}
-            </p>
+    <section className="grid gap-6 lg:grid-cols-[260px,1fr]">
+      <Card className="h-fit">
+        <CardHeader className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white">
+              {currentUser.name.slice(0, 2)}
+            </div>
+            <div>
+              <CardTitle className="text-lg">{currentUser.name}</CardTitle>
+              <p className="text-sm text-slate-500">
+                {connection === 'connected' ? 'Server connected' : 'Server offline'}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="chat__users">
-          <h2 className="chat__section-title">Active Users</h2>
-          <ul>
-            {userList.map((user) => (
-              <li key={user.id} className="chat__user">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+            Active users
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {userList.map((user) => (
+            <div
+              key={user.id}
+              className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 text-sm font-medium"
+            >
+              <div className="flex items-center gap-2">
                 <span
-                  className={`chat__status chat__status--${user.status}`}
+                  className={`h-2 w-2 rounded-full ${
+                    user.status === 'online' ? 'bg-emerald-500' : 'bg-rose-400'
+                  }`}
                   aria-hidden="true"
                 />
                 <span>
                   {user.id === currentUser.id ? `${user.name} (you)` : user.name}
                 </span>
-                <span className="chat__user-meta">
-                  {user.status === 'online' ? 'online' : 'offline'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </aside>
-
-      <div className="chat__panel">
-        <div className="chat__header">
-          <div>
-            <h2>Campus Lounge</h2>
-            <p className="chat__subtle">Real-time messaging with timestamps.</p>
-          </div>
-          <button className="chat__logout" onClick={onLogout} type="button">
-            Sign out
-          </button>
-        </div>
-
-        <div className="chat__messages" role="log" aria-live="polite">
-          {messages.length === 0 ? (
-            <div className="chat__empty">
-              Start the conversation. Messages will persist on the server.
+              </div>
+              <Badge variant={user.status === 'online' ? 'success' : 'offline'}>
+                {user.status}
+              </Badge>
             </div>
-          ) : (
-            messages.map((message) => (
-              <article
-                key={message.id}
-                className={`message ${
-                  message.userId === currentUser.id ? 'message--self' : ''
-                }`}
-              >
-                <header className="message__header">
-                  <span className="message__author">
-                    {message.userId === currentUser.id ? 'You' : message.userName}
-                  </span>
-                  <span className="message__time">
-                    {formatTime(message.timestamp)}
-                  </span>
-                </header>
-                <p className="message__text">{message.text}</p>
-              </article>
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+          ))}
+        </CardContent>
+      </Card>
 
-        <form className="chat__composer" onSubmit={handleSubmit}>
-          <div className="chat__input-group">
-            <input
-              type="text"
-              placeholder="Write a message..."
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              aria-label="Write a message"
-            />
-            <button type="submit">Send</button>
+      <Card className="flex h-full flex-col">
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>EchoLine Lounge</CardTitle>
+            <p className="text-sm text-slate-500">Real-time messaging with history.</p>
           </div>
-          {notice ? <p className="chat__notice">{notice}</p> : null}
-        </form>
-      </div>
+          <Button variant="outline" onClick={onLogout} className="w-full md:w-auto">
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </CardHeader>
+        <CardContent className="flex flex-1 flex-col gap-4">
+          <div
+            className="flex-1 overflow-y-auto rounded-xl border border-slate-200/70 bg-slate-50/70 p-4"
+            role="log"
+            aria-live="polite"
+          >
+            {messages.length === 0 ? (
+              <div className="grid h-full place-items-center text-sm text-slate-500">
+                Start the conversation. Messages will persist on the server.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message) => {
+                  const isSelf = message.userId === currentUser.id
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex flex-col gap-1 ${
+                        isSelf ? 'items-end' : 'items-start'
+                      }`}
+                    >
+                      {isSelf ? null : (
+                        <p className="px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          {message.userName}
+                        </p>
+                      )}
+                      <article
+                        className={`w-fit max-w-full rounded-2xl border px-3 py-2 shadow-sm md:max-w-[75%] ${
+                          isSelf
+                            ? 'border-slate-900 bg-slate-900 text-white'
+                            : 'border-slate-200 bg-white text-slate-900'
+                        }`}
+                      >
+                        <p className="break-words text-sm leading-relaxed">
+                          {message.text}
+                        </p>
+                      </article>
+                      <p className="px-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                        {formatTime(message.timestamp)}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="flex flex-col gap-3 md:flex-row">
+              <Input
+                type="text"
+                placeholder="Write a message..."
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                aria-label="Write a message"
+              />
+              <Button type="submit" className="md:w-36">
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
+            </div>
+            {notice ? <p className="text-sm text-rose-500">{notice}</p> : null}
+          </form>
+        </CardContent>
+      </Card>
     </section>
   )
 }
