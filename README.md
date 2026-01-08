@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# Real-Time Chat App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight real-time chat app with a Vite + React frontend and a Node/Express + WebSocket backend. Messages and users are stored in MySQL.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 18+ (20+ recommended)
+- MySQL 8+ (XAMPP is fine)
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1) Install dependencies
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2) Create the environment file
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+copy .env
 ```
+
+Update `MYSQL_URL` in `.env` to match your MySQL credentials, for example:
+
+```text
+MYSQL_URL=mysql://root@localhost:3306/real_time_chat_app
+```
+
+3) Initialize the database tables
+
+```bash
+npm run db:init
+```
+
+4) Start the backend server
+
+```bash
+npm run dev:server
+```
+
+5) Start the frontend
+
+```bash
+npm run dev
+```
+
+Vite proxies `/api` requests to the backend at `http://localhost:4000`.
+
+## Scripts
+
+- `npm run dev` - start the Vite dev server
+- `npm run dev:server` - start the backend server
+- `npm run db:init` - create the `users` and `messages` tables
+- `npm run build` - build the frontend
+- `npm run preview` - preview the production build
+- `npm run lint` - run ESLint
+
+## Authentication
+
+Users sign up with a unique username, password, and display name. Log in with the same username and password to get the same user id.
+
+## Notes
+
+- If MySQL denies access, double-check the username/password in `MYSQL_URL`.
+- If you use XAMPP, root often has no password by default.
